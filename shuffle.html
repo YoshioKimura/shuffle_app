@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
+    <title>Slot machine</title>
+    <style>
+        body {
+            width: 100%;
+            background: #e0e0e0;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            font-size: 16px;
+            margin-top: 16px;
+            margin: auto;
+        }
+        
+        #panel0 {
+            margin-top:70px;
+        }
+        
+        .panel {
+            margin: auto;
+            display: block;
+            text-align: center;
+            width: 600px;
+            padding: 7px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            color: #00aaff;
+            font-weight: bold;
+            font-size: 32px;
+            line-height: 64px;
+            background: #fff;
+        }
+        
+        .panel + .panel {
+            margin-left: 10px;
+            margin-bottom: 10px;
+            margin: auto;
+            margin-bottom: 15px;
+        }
+        
+        .panel .unmatched {
+            opacity: 0.5;
+        }
+        
+        .btn {
+            display: none;
+            width: 60px;
+            padding: 7px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            color: #fff;
+            box-shadow: 0 4px 0 #0088cc;
+            background: #00aaff;
+            cursor: pointer;
+        }
+        
+        .btn + .btn {
+            margin-left: 10px;
+        }
+        
+        .btn .inactive {
+            opacity: 0.5;
+        }
+        
+        #spinButton {
+            margin: 0 auto;
+            margin-bottom: 20px;
+            width: 240px;
+            padding: 7px;
+            border-radius: 5px;
+            color: #fff;
+            box-shadow: 0 4px 0 #e91336;
+            background: #f44336;
+            cursor: pointer;
+        }
+        
+        #spinButton:hover {
+            opacity: 0.5;
+        }
+        
+        #stopButton {
+            margin-top: 30px;
+            margin: 0 auto;
+            margin-bottom: 20px;
+            width: 240px;
+            padding: 7px;
+            border-radius: 5px;
+            color: #fff;
+            box-shadow: 0 4px 0 #e91336;
+            background: #f44336;
+            cursor: pointer;
+        }
+        
+        #stopButton:hover {
+            opacity: 0.5;
+        }
+        
+        #hojuButton {
+            margin-top: 30px;
+            margin: 0 auto;
+            margin-bottom: 20px;
+            width: 240px;
+            padding: 7px;
+            border-radius: 5px;
+            color: #fff;
+            box-shadow: 0 4px 0 #e91336;
+            background: #f44336;
+            cursor: pointer;
+        }
+        
+        #hojuButton:hover {
+            opacity: 0.5;
+        }
+        
+        #score {
+            font-size: 20px;
+            color: red;
+            font-family: Arial, sans-serif;
+            padding-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="panels-wrapper">
+
+    </div>
+
+    <div id="spinButton">SPIN</div>
+    <div id="stopButton">STOP</div>
+    <div id="hojuButton" style="display:none">補充する</div>
+    <a href="https://twitter.com/share" class="twitter-share-button" data-text="csvをインストールして順番を決めるアプリが便利。" data-hashtags="slotmachine">Tweet</a>
+    
+    
+<audio id="sound-file" preload="auto">
+	<source src="sound/drum.mp3" type="audio/mp3">
+
+</audio>
+
+    <script>
+        //twitter読み込み
+        ! function (d, s, id) {
+            var js, fjs = d.getElementsByTagName(s)[0]
+                , p = /^http:/.test(d.location) ? 'http' : 'https';
+            if (!d.getElementById(id)) {
+                js = d.createElement(s);
+                js.id = id;
+                js.src = p + '://platform.twitter.com/widgets.js';
+                fjs.parentNode.insertBefore(js, fjs);
+            }
+        }(document, 'script', 'twitter-wjs');
+    </script>
+    <script>
+        (async function() {
+            'use strict'
+            
+            var panels = await getCSVFile();
+            var timers = [];
+            var results = [];
+            var stopCount = 0;
+            var isPlaying = false;
+            var panelElm = [];
+            //配列の個数分だけパネル表示
+            for(var i = 0;i < panels.length;i++){
+                $(".panels-wrapper").append(`<div class="panel" id="panel${i}">?</div>`)
+            }
+
+            function shuffle(array) {
+                var n = array.length
+                    , t, i;
+                while (n) {
+                    i = Math.floor(Math.random() * n--);
+                    t = array[n];
+                    array[n] = array[i];
+                    array[i] = t;
+                }
+                return array;
+            }
+            
+//            shuffle(panels);
+            const resultArray = shuffle(panels);
+            
+            for(var i = 0; i < panels.length;i++){
+                panelElm.push(document.getElementById(`panel${i}`));
+            }
+
+//            console.log(start());
+            var spinButton = document.getElementById('spinButton');
+            var stopButton = document.getElementById('stopButton');
+            var hojuButton = document.getElementById('hojuButton');
+            
+            spinButton.addEventListener('click', function () {
+            
+                if (isPlaying) return;
+                isPlaying = true;
+                this.className = 'inactive';
+                for(var i = 0; i < panels.length;i++){
+                    runSlot(i, panelElm[i]);
+                }
+                
+//                runSlot(1, panel1);
+//                runSlot(2, panel2);
+//                runSlot(3, panel3);
+//                runSlot(4, panel4);
+            });
+
+            function runSlot(n, panel) {
+                panel.innerHTML = panels[Math.floor(Math.random() * panels.length)];
+                timers[n] = setTimeout(function () {
+                    runSlot(n, panel)
+                }, 50);
+                document.getElementById('sound-file').play();
+            }
+            stopButton.addEventListener('click', function () {
+                for(var i = 0; i < panels.length;i++){
+                    stopSlot(i, panelElm[i], this);
+                }
+            });
+            
+            
+            hojuButton.addEventListener('click', function () {
+                hoju();
+            });
+
+            function stopSlot(n, panel, btn) {
+                if (!isPlaying || results[n] !== undefined) return;
+                btn.className = 'btn inactive';
+                clearTimeout(timers[n]);
+                results[n] = panel.innerHTML;
+                stopCount++;
+                if (stopCount === panels.length) {
+                    isPlaying = false;
+                    timers = [];
+                    results = [];
+                    stopCount = 0;
+                    spinButton.className = '';
+                }
+                
+                for(var i = 0; i < panels.length;i++){
+                    $(`#panel${i}`).html(`${resultArray[i]}`);
+                }
+            }
+            
+                function getCSVFile(){
+                    return new Promise((resolve, reject) => {
+                        var xhr = new XMLHttpRequest();
+                        var tempArray;
+                        xhr.onload = function() {
+                            tempArray = xhr.responseText.split("\n");
+                            console.log(tempArray);
+                            resolve(tempArray);
+                        };
+                        xhr.open("get", "csv_test_file.csv", true);
+                        xhr.send(null);
+                    });
+                }
+        })();
+    </script>
+</body>
+
+</html>
